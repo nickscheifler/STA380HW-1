@@ -1,0 +1,334 @@
+---
+title: "STA380 Homework 1"
+author: "Nick Scheifler"
+output:
+  html_document: default
+  pdf_document: default
+---
+# Probability
+## Problem A
+
+Visitors to your website are asked to answer a single survey question before they get access to the content on the page. Among all of the users, there are two categories: Random Clicker (RC), and Truthful Clicker (TC). There are two possible answers to the survey: yes and no. Random clickers would click either one with equal probability. You are also giving the information that the expected fraction of random clickers is 0.3.
+
+After a trial period, you get the following survey results: 65% said Yes and 35% said No.
+
+What fraction of people who are truthful clickers answered yes?
+
+
+### Given:
+
+P(RC) = .3
+P(TC) = .7
+
+P(Y|RC) = .5
+P(N|RC) = .5
+
+P(Y) = .65
+P(N) = .35
+
+### Solve for P(Y|TC).
+
+#### Using the rule of total probability:
+P(Y) = P(Y,RC) + P(Y,TC) = P(Y|RC) x P(RC) + P(Y|TC) x P(TC)
+#### Insert known values
+.65 = .5 x .3 + P(Y|TC) x .7
+#### Isolate P(Y|TC) algebraically and there you have it
+P(Y|TC) = 5/7
+
+
+##Problem B
+
+Imagine a medical test for a disease with the following two attributes:
+
+The sensitivity is about 0.993. That is, if someone has the disease, there is a probability of 0.993 that they will test positive.
+The specificity is about 0.9999. This means that if someone doesn't have the disease, there is probability of 0.9999 that they will test negative.
+In the general population, incidence of the disease is reasonably rare: about 0.0025% of all people have it (or 0.000025 as a decimal probability).
+
+Suppose someone tests positive. What is the probability that they have the disease? In light of this calculation, do you envision any problems in implementing a universal testing policy for the disease?
+
+###Given:
+T = tests positive; D = has disease
+P(T|D) = .993; therefore P(-T|D) = .007
+P(-T|-D) = .9999; therefore P(T|-D) = .0001
+P(D) = .000025; therefore P(-D) = .999975
+
+### Solve for P(D|T).
+
+#### Baye's Rule:
+P(D|T) =( P(D) + P(T|D) ) / P(T)
+#### Rule of total probability:
+P(T) = P(T|D) x P(D) + P(T|-D) x P(-D)
+
+#### Combining Baye's Rule and Total Probability:
+P(D|T) =
+P(D) + P(T|D) /
+P(T|D) x P(D) + P(T|-D) x P(-D)
+#### Inserting known values
+P(D|T) = 
+.000025 x .993 /
+.993 x .000025 + .0001 x .999975
+
+### Solution
+P(D|T) = 18.86%
+This means that if you test positive for the disease, you have an 18.86% chance of actually having the disease. Also, the chance of being tested positive in the first place is .012% - pretty low. This leads me to believe that this is actually a pretty good test. Implementing a universal testing policy could be difficult however, as this disease is very rare. Doctors need to be aware that in the rare event that a patient does test positive, he or she still most likely does not have the disease.
+
+# Exploratory Analysis: Green Buildings
+
+
+```{R}
+
+library(mosaic)
+library(foreach)
+
+greenbuildings <- read.csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv")
+
+summary(greenbuildings)
+```
+```{R}
+greenbuildings_lowoccupancy <- greenbuildings[greenbuildings$leasing_rate<10,]
+count(greenbuildings_lowoccupancy)
+#215 buildings with low occupancy
+sum(greenbuildings_lowoccupancy$green_rating)
+#only one of the low occupancy buildings has a green rating
+
+#remove rows with low occupancy rates
+greenbuildings<-greenbuildings[!greenbuildings$leasing_rate<10,]
+
+certified_buildings <- greenbuildings[greenbuildings$green_rating==1,]
+noncertified_buildings <- greenbuildings[greenbuildings$green_rating==0,]
+
+median(certified_buildings$Rent) #27.6
+median(noncertified_buildings$Rent) #25.03
+
+mean(certified_buildings$leasing_rate) #89.41
+median(certified_buildings$leasing_rate) #92.93
+mean(noncertified_buildings$leasing_rate) #84.44
+median(noncertified_buildings$leasing_rate) #89.65
+
+```
+
+### Confounding variable: age of the building
+
+The Excel guru's analysis is incorrect, one factor for which being the fact that he did not take into account the age of the buildings.
+
+```{R}
+cor(noncertified_buildings$age, noncertified_buildings$Rent) -.1
+
+median(certified_buildings[certified_buildings$age<50,]$Rent) #27.5
+median(certified_buildings[certified_buildings$age<20,]$Rent) #28.2
+
+median(noncertified_buildings[noncertified_buildings$age<50,]$Rent) #26
+median(noncertified_buildings[noncertified_buildings$age<20,]$Rent) #28.8
+
+plot(greenbuildings$age, greenbuildings$green_rating)
+plot(noncertified_buildings$age, noncertified_buildings$Rent)
+plot(certified_buildings$age, certified_buildings$Rent)
+
+```
+There is a slight negative correlation between the age of a non-certified green building and its rent. This should impact the analysis, as the rent of newer buildings is more relevant than that of older buildings. Older buildings are both more likely to not be green, and to have lower rent.
+
+Indeed, if you only take the median rent of buildings that are less than 50 years old, the comparison between rents of green vs non-green buildings shifts from 27.6 vs 25.03 to 27.5 vs 26, reducing the marginal economic advantage of green buildings. Further, if you take the median rent of buildings that are less than 20 years old, the median rent comparison shifts to 28.2 vs 28.8, eliminating the green advantage completely and even suggesting that new non-green buildings produce higher rent than green buildings.
+
+
+# Stock Portfolio
+
+```{R}
+library(quantmod) #for getting yahoo stock data
+
+# Import the specified stocks
+mystocks = c("VNQ", "EEM", "SPY", "TLT", "LQD")
+getSymbols(mystocks) #gets stocks from yahoo
+
+# A chunk of code for adjusting all stocks
+# creates a new object addind 'a' to the end
+# For example, WMT becomes WMTa, etc
+for(ticker in mystocks) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+
+# Combine close to close changes in a single matrix
+all_returns = cbind(ClCl(SPYa), ClCl(TLTa), ClCl(LQDa), ClCl(EEMa), ClCl(VNQa))
+
+all_returns = as.matrix(na.omit(all_returns))
+
+head(all_returns)
+
+```
+```{R}
+#compare the risk of each of the five stocks
+plot(ClCl(VNQa), col="red")
+lines(ClCl(EEMa), col="gray")
+lines(ClCl(SPYa), col="orange")
+lines(ClCl(TLTa), col="blue")
+lines(ClCl(LQDa), col="green")
+
+median(na.omit(ClCl(VNQa)))
+median(na.omit(ClCl(EEMa)))
+median(na.omit(ClCl(SPYa)))
+median(na.omit(ClCl(TLTa)))
+median(na.omit(ClCl(LQDa)))
+
+sd(na.omit(ClCl(VNQa)))
+sd(na.omit(ClCl(EEMa)))
+sd(na.omit(ClCl(SPYa)))
+sd(na.omit(ClCl(TLTa)))
+sd(na.omit(ClCl(LQDa)))
+```
+
+### standard portfolio
+```{R}
+
+set.seed(12345)
+# imulate many different possible scenarios  
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		#redistribute wealth among holdings
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+
+head(sim1)
+hist(sim1[,n_days], 25)
+
+# Profit/loss
+mean(sim1[,n_days])
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+# the value at risk is the specified quantile in the profit and loss distribution
+# Calculate 5% value at risk
+# 5% of the time, what is the amoutn of money that I am losing?
+quantile(sim1[,n_days], 0.05) - initial_wealth
+# 5% of the time I am losing more than ^ this amount
+```
+
+### safe portfolio
+
+```{R}
+head(all_returns)
+initial_wealth = 100000
+sim2 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(.34, .33, 0.33, 0, 0)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		#redistribute wealth among holdings
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+
+head(sim2)
+hist(sim2[,n_days], 25)
+
+# Profit/loss
+mean(sim2[,n_days])
+hist(sim2[,n_days]- initial_wealth, breaks=30)
+
+# the value at risk is the specified quantile in the profit and loss distribution
+# Calculate 5% value at risk
+# 5% of the time, what is the amoutn of money that I am losing?
+quantile(sim2[,n_days], 0.05) - initial_wealth
+# 5% of the time I am losing more than ^ this amount
+
+
+
+```
+### aggresive portfolio
+
+```{R}
+head(all_returns)
+initial_wealth = 100000
+sim3 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0, 0, 0, .5, .5)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		#redistribute wealth among holdings
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+
+head(sim3)
+hist(sim3[,n_days], 25)
+
+# Profit/loss
+mean(sim3[,n_days])
+hist(sim3[,n_days]- initial_wealth, breaks=30)
+
+# the value at risk is the specified quantile in the profit and loss distribution
+# Calculate 5% value at risk
+# 5% of the time, what is the amoutn of money that I am losing?
+quantile(sim3[,n_days], 0.05) - initial_wealth
+# 5% of the time I am losing more than ^ this amount
+# bozzle 2 (sic) says that every bank must calculate this for every two weeks
+
+
+
+```
+### Solution
+
+#### Risk of each ETF
+The median of the daily closing values of an ETF can tell us something about its risk.
+Medians x10,000:
+VNQ: 6.9
+EEM: 8.5 - lowest risk
+SPY: 6.2
+TLT: 5.7
+LQD: 4.3 - highest risk
+
+#### Safe and Aggressive portfolios
+For the safe portfolio I weighted VNQ, EEM, and SPY at ~.33 each and set the weights for the other two to 0.
+
+For the aggressive portfolio I weighted TLT and LQD at .5 each and set the weights for the other three to 0.
+
+#### comparing the three portfolios
+
+Expected results after 20 trading days:
+
+#### Standard:
+Expected Profit: 950.4
+5% Risk: -6363.609 
+
+#### Safe:
+Expected Profit: 663.4
+5% Risk: -2945.199
+
+#### Aggressive:
+Expected Profit: 1597.9
+5% Risk: -12780.84
+
+
+# Market Segmentation
+
+```{R}
+
+socialmarketing <- read.csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/social_marketing.csv")
+
+head(socialmarketing)
+```
+
