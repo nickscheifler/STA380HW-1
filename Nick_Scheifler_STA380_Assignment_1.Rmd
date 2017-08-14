@@ -109,7 +109,7 @@ median(noncertified_buildings$leasing_rate) #89.65
 
 ### Confounding variable: age of the building
 
-The Excel guru's analysis is incorrect, one factor for which being the fact that he did not take into account the age of the buildings.
+The Excel guru's analysis is flawed, one factor for which being the fact that he did not take into account the age of the buildings.
 
 ```{R}
 cor(noncertified_buildings$age, noncertified_buildings$Rent) -.1
@@ -327,8 +327,106 @@ Expected Profit: 1597.9
 
 ```{R}
 
+library(corrplot)
 socialmarketing <- read.csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/social_marketing.csv")
 
 head(socialmarketing)
 ```
 
+```{R}
+#remove user hash
+social_mkt = socialmarketing[,-1]
+
+corr_mat = cor(social_mkt)
+corrplot(corr_mat, type="lower")
+```
+
+
+```{R}
+#scale values
+social_scaled <- scale(social_mkt, center=TRUE, scale=TRUE)
+
+k.max <-20
+wss <- sapply(1:k.max, 
+        function(k){kmeans(social_scaled, k, nstart=10, iter.max = 50 )$tot.withinss})
+plot(1:k.max, wss,
+       type="b", pch = 19, frame = FALSE, 
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+
+
+
+```
+
+#### From the elbow plot it looks like 10 is a good number for K.
+
+```{R}
+#creating the clusters
+set.seed(333)
+clust = kmeans(social_scaled, centers=10, nstart=50) 
+
+```
+
+```{R}
+#unscale
+mu=attr(social_scaled,"scaled:center")
+sigma=attr(social_scaled,"scaled:scale")
+
+```
+
+#### Cluster 1
+```{R}
+rbind(clust$center[1,],(clust$center[1,]*sigma + mu))
+```
+
+#### Cluster 2
+
+```{R}
+rbind(clust$center[2,],(clust$center[2,]*sigma + mu))
+
+```
+
+#### Cluster 3
+
+```{R}
+rbind(clust$center[3,],(clust$center[3,]*sigma + mu))
+```
+
+#### Cluster 4
+```{R}
+rbind(clust$center[4,],(clust$center[4,]*sigma + mu))
+```
+
+#### Cluster 5
+```{R}
+rbind(clust$center[5,],(clust$center[5,]*sigma + mu))
+```
+#### Cluster 6
+```{R}
+rbind(clust$center[6,],(clust$center[6,]*sigma + mu))
+```
+#### Cluster 7
+```{R}
+rbind(clust$center[7,],(clust$center[7,]*sigma + mu))
+```
+#### Cluster 8
+```{R}
+rbind(clust$center[8,],(clust$center[8,]*sigma + mu))
+```
+#### Cluster 9
+```{R}
+rbind(clust$center[9,],(clust$center[9,]*sigma + mu))
+```
+#### Cluster 10
+```{R}
+rbind(clust$center[10,],(clust$center[10,]*sigma + mu))
+```
+#### Cluster 1 represents a demographic that focuses on shopping and sharing of photos
+
+#### Cluster 4 represents a politically active and globally aware demographic, as they tweet about politics, news, and travel
+
+#### Cluster 8 represents bots who spam and post adult content
+
+#### Cluster 9 represents college-aged males who tweet about online gaming, college / university, and playing sports.
+
+#### Cluster 10 represents the creative demographic - people who tweet largely about art, television, and film
